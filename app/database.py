@@ -17,7 +17,7 @@ class Order(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     restaurant_id: Mapped[int] = mapped_column(Integer, ForeignKey('restaurants.id'))
-    item: Mapped[str] = mapped_column(String(100))
+    dish: Mapped[str] = mapped_column(String(100))
     quantity: Mapped[int] = mapped_column(Integer)
 
 with engine.connect() as connection:
