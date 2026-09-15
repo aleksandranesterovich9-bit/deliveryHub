@@ -1,11 +1,13 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import restaurants
+from app.routes.restaurants import restaurants
 
 
 router = APIRouter()
 
-orders = []
+orders = {}
+
+last_order_id = max((order['id'] for order in orders.values()),default=0) + 1
 
 class Order(BaseModel):
     id:int
@@ -18,18 +20,23 @@ class CreateOrder(BaseModel):
     dish:str
     quantity:int
 
-@router.post('/order',response_model=Order)
+@router.post('/orders',response_model=Order)
 async def create_order(obj:CreateOrder):
-    if orders:
-        new_id = max(order['id'] for order in orders) + 1
-    else:
-        new_id = 1
+    global last_order_id
+    new_id = last_order_id
     new_order = {'id': new_id, 'restaurant_id': obj.restaurant_id,'dish': obj.dish, 'quantity':obj.quantity}
-    for restaurant in restaurants:
-        if restaurant['id'] == obj.restaurant_id:
-            orders.append(new_order)
+    try:
+        if restaurants[obj.restaurant_id]:
+            orders[new_id] = new_order
+            last_order_id += 1
             return new_order
-    raise HTTPException(
+    except KeyError:
+        raise HTTPException(
         status_code=404,
         detail='Restaurant not found'
     )
+@router.get('/orders', response_model=list[Order])
+async def all_orders():
+    return orders.values()
+
+
