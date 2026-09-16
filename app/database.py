@@ -1,7 +1,14 @@
-from sqlalchemy import create_engine,Integer, String
+from sqlalchemy import create_engine,Integer, String, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+import os
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
 
-engine = create_engine('postgresql://postgres:werty123@localhost:5432/deliveryHub', echo=True)
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_engine(DATABASE_URL, echo=True)
 
 class Base(DeclarativeBase):
     pass

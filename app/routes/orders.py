@@ -7,6 +7,8 @@ router = APIRouter()
 
 orders = {}
 
+orders_by_restaurant = {1:[]}
+
 last_order_id = max((order['id'] for order in orders.values()),default=0) + 1
 
 class Order(BaseModel):
@@ -39,4 +41,12 @@ async def create_order(obj:CreateOrder):
 async def all_orders():
     return orders.values()
 
+@router.get('/restaurants/{restaurant_id}/orders')
+async def get_restaurants_id_orders(restaurant_id:int):
+    result = []
+    for order in orders.values():
+        if order['restaurant_id'] == restaurant_id:
+            result.append(order)
+    return result
+        
 
