@@ -1,75 +1,138 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.database import Restaurant as RestaurantModel, get_db
+
 
 router = APIRouter()
 
-class Restaurant(BaseModel):
-    id:int
-    name:str
+class RestaurantResponse(BaseModel):
+    id: int
+    name: str
+    model_config = ConfigDict(from_attributes=True)
 
+
+# Схема данных, которые клиент присылает
 class CreateRestaurant(BaseModel):
-    name:str
+    name: str
 
 
-restaurants = {
-    1: {"id": 1, "name": "Pizza House"},
-    2: {"id": 2, "name": "Sushi World"},
-    3: {"id": 3, "name": "Burger King"}
-}
+# GET /restaurants
+@router.get("/restaurants", response_model=list[RestaurantResponse])
+def get_restaurants(
+    name: str | None = None,
+    limit: int | None = Query(default=None, ge=1),
+    db: Session = Depends(get_db)
+):
+    statement = select(RestaurantModel)
 
-last_id = max((restaurant['id'] for restaurant in restaurants.values()), default=0) + 1
-
-
-@router.get('/restaurants', response_model=list[Restaurant])
-async def get_restaurants(name:str=None,limit:int=None):
-    result = []
-    for restaurant in restaurants.values():
-        if name:
-            if name.lower() in restaurant['name'].lower():
-                result.append(restaurant)
-        else:
-            result.append(restaurant)
-    if limit:
-        return result[:limit]
-
-    return result
-
-@router.get('/restaurants/{restaurants_id}', response_model=Restaurant)
-async def get_restaurants_id(restaurants_id:int):
-    try:
-        return restaurants[restaurants_id]
-    except KeyError:
-        raise HTTPException(status_code=404, detail='Not found:(')
-
-@router.post('/restaurants', response_model=Restaurant)
-async def create_restaurant(obj:CreateRestaurant):
-    global last_id
-    new_id = last_id
-    new_dict = {'id': new_id, 'name':obj.name}
-    restaurants[new_id] = new_dict
-    last_id += 1
-    return new_dict
-
-@router.put('/restaurants/{restaurants_id}', response_model=Restaurant)
-async def change_restaurants(obj:CreateRestaurant,restaurants_id:int):
-    try:
-        restaurant = restaurants[restaurants_id]
-        restaurant['name'] = obj.name
-        return restaurant
-    except KeyError:
-        raise HTTPException(
-            status_code=404,
-            detail='Not found'
+    if name:
+        statement = statement.where(
+            RestaurantModel.name.ilike(f"%{name}%")
         )
 
-@router.delete('/restaurants/{restaurants_id}')
-async def delete_restaurant(restaurants_id:int):
-    try:
-        del restaurants[restaurants_id]
-        return {'message': 'Restaurant deleted successfully'}
-    except KeyError:
+    if limit is not None:
+        statement = statement.limit(limit)
+
+    return db.scalars(statement).all()
+
+
+# GET /restaurants/{restaurant_id}
+@router.get(
+    "/restaurants/{restaurant_id}",
+    response_model=RestaurantResponse
+)
+def get_restaurant(
+    restaurant_id: int,
+    db: Session = Depends(get_db)
+):
+    restaurant = db.get(RestaurantModel, restaurant_id)
+
+    if restaurant is None:
         raise HTTPException(
             status_code=404,
-            detail='Not found'
+            detail="Restaurant not found"
         )
 
+    return restaurant
+
+
+# POST /restaurants
+@router.post("/restaurants", response_model=RestaurantResponse)
+def create_restaurant(
+    obj: CreateRestaurant,
+    db: Session = Depends(get_db)
+):
+    restaurant = RestaurantModel(name=obj.name)
+
+    db.add(restaurant)
+
+    try:
+        db.commit()
+        db.refresh(restaurant)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Could not create restaurant"
+        )
+
+    return restaurant
+
+
+# PUT /restaurants/{restaurant_id}
+@router.put(
+    "/restaurants/{restaurant_id}",
+    response_model=RestaurantResponse
+)
+def update_restaurant(
+    restaurant_id: int,
+    obj: CreateRestaurant,
+    db: Session = Depends(get_db)
+):
+    restaurant = db.get(RestaurantModel, restaurant_id)
+
+    if restaurant is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Restaurant not found"
+        )
+
+    restaurant.name = obj.name
+
+    db.commit()
+    db.refresh(restaurant)
+
+    return restaurant
+
+
+# DELETE /restaurants/{restaurant_id}
+@router.delete("/restaurants/{restaurant_id}")
+def delete_restaurant(
+    restaurant_id: int,
+    db: Session = Depends(get_db)
+):
+    restaurant = db.get(RestaurantModel, restaurant_id)
+
+    if restaurant is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Restaurant not found"
+        )
+
+    db.delete(restaurant)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot delete restaurant because it has related records"
+        )
+
+    return {"message": "Restaurant deleted successfully"}
