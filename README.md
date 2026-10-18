@@ -1,58 +1,49 @@
-# DeliveryHub
-
-Backend service for food delivery, built with Python and FastAPI.
-
-## 🚀 About the Project
-
-DeliveryHub is an educational backend project for managing restaurants and food delivery orders.
-
-The project is being developed step by step while learning modern backend development technologies and best practices.
-
-## 🛠 Technologies
-
-- Python 3.13
-- FastAPI
-- Pydantic
-- Uvicorn
-- PostgreSQL — planned
-- Redis — planned
-- Docker — planned
-
-## 📌 Implemented
+## 📌 Implemented Features
 
 ### Restaurants
-
-- Get all restaurants
-- Get a restaurant by ID
-- Create a restaurant
-- Update a restaurant
-- Delete a restaurant
+- Retrieve all restaurants
+- Retrieve a restaurant by ID
+- Create, update, and delete restaurants
 - Search restaurants by name
 - Limit the number of results
 
 ### Orders
-
 - Create an order
+- Associate orders with restaurants
 - Validate restaurant existence
 - Automatically generate order IDs
 
 ## 🔜 Roadmap
 
-- Get all orders
-- Get an order by ID
-- Update and delete orders
-- PostgreSQL integration
+- Complete CRUD operations for orders
+- Connect all endpoints to PostgreSQL
+- Implement database operations using SQLAlchemy
+- Add Alembic database migrations
+- Implement user registration and authentication
+- Add automated API tests with Pytest
+- Improve error handling and project structure
+- Dockerize the application
+
+## 🛠 Tech Stack
+
+- Python 3.13
+- FastAPI
+- Pydantic
 - SQLAlchemy
-- Redis
-- Docker
-- User authentication
-- Project architecture improvements
-- API testing
+- PostgreSQL
+- Uvicorn
+- Pytest *(planned)*
+- Alembic *(planned)*
+- Docker *(planned)*
 
-## ▶️ Getting Started
+## 🎯 Project Goals
 
-Clone the repository:
+- Practice Python backend development
+- Build RESTful APIs
+- Learn relational databases and ORM
+- Apply testing and authentication
+- Develop a maintainable backend application
 
-```bash
-git clone https://github.com/aleksandranesterovich9-bit/deliveryHub.git
-cd deliveryHub
+## 📚 Project Status
+
+An educational backend project under active development. New features are added incrementally as part of learning modern Python backend development.
