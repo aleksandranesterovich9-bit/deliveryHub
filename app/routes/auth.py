@@ -1,48 +1,109 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
+import os
+from datetime import datetime, timedelta, timezone
 
+import jwt
+from jwt.exceptions import InvalidTokenError
+from fastapi import Depends, HTTPException, status,APIRouter
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
 from pwdlib import PasswordHash
 
 from app.database import User, get_db
-from app.database import SessionLocal
 
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY is missing in .env")
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 password_hash = PasswordHash.recommended()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-class RegisterRequest(BaseModel):
-    name: str
-    phone: str
-    password: str
-
-
-@router.post("/register")
-async def register(user: RegisterRequest, db: Session = Depends(get_db)):
-    existing_user = db.query(User).filter(User.phone == user.phone).first()
-
-    if existing_user:
-        raise HTTPException(
-            status_code=400,
-            detail="User with this phone already exists"
-        )
-
-    hashed_password = password_hash.hash(user.password)
-
-    new_user = User(
-        name=user.name,
-        phone=user.phone,
-        password_hash=hashed_password
+def create_access_token(user_id: int) -> str:
+    expires_at = datetime.now(timezone.utc) + timedelta(
+        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
 
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
+    payload = {
+        "sub": str(user_id),
+        "exp": expires_at,
+    }
+
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+@router.post("/auth/login")
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    user = (
+        db.query(User)
+        .filter(User.phone == form_data.username)
+        .first()
+    )
+
+    if user is None or not password_hash.verify(
+        form_data.password, user.password_hash
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect phone number or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    access_token = create_access_token(user.id)
 
     return {
-        "id": new_user.id,
-        "name": new_user.name,
-        "phone": new_user.phone
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
+
+
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+        )
+        subject = payload.get("sub")
+
+        if subject is None:
+            raise credentials_exception
+
+        user_id = int(subject)
+
+    except (InvalidTokenError, ValueError):
+        raise credentials_exception
+
+    user = db.get(User, user_id)
+
+    if user is None:
+        raise credentials_exception
+
+    return user
+
+
+@router.get("/me")
+def read_current_user(
+    current_user: User = Depends(get_current_user),
+):
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "phone": current_user.phone,
     }

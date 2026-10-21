@@ -1,14 +1,13 @@
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session,joinedload
 
 from app.database import Restaurant as RestaurantModel, get_db
 
 
-router = APIRouter()
+router = APIRouter(tags=['Restaurants'])
 
 class RestaurantResponse(BaseModel):
     id: int
@@ -46,19 +45,22 @@ def get_restaurants(
     "/restaurants/{restaurant_id}",
     response_model=RestaurantResponse
 )
-def get_restaurant(
+async def get_restaurant(
     restaurant_id: int,
     db: Session = Depends(get_db)
 ):
-    restaurant = db.get(RestaurantModel, restaurant_id)
 
-    if restaurant is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Restaurant not found"
-        )
+        statement = select(RestaurantModel).where(RestaurantModel.id == restaurant_id)
 
-    return restaurant
+        restaurant = db.scalars(statement).one_or_none()
+
+        if restaurant is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Restaurant not found"
+            )
+
+        return restaurant
 
 
 # POST /restaurants

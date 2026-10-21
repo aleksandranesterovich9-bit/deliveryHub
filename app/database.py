@@ -117,6 +117,24 @@ class Order(Base):
         nullable=False
     )
 
+class Delivery(Base):
+    __tablename__ = "deliveries"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True
+    )
+
+    order_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("orders.id"),
+        nullable=False
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False
+    )
 
 # Проверка подключения и создание отсутствующих таблиц
 if __name__ == "__main__":

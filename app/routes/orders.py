@@ -10,7 +10,7 @@ from app.database import Order as OrderModel
 from app.database import Restaurant as RestaurantModel
 from app.database import get_db
 
-router = APIRouter()
+router = APIRouter(tags=['Orders'])
 
 
 # Схема заказа для ответа API
