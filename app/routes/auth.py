@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
-
+from pydantic import BaseModel, Field
 import jwt
 from jwt.exceptions import InvalidTokenError
 from fastapi import Depends, HTTPException, status,APIRouter
@@ -23,6 +23,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+class RegisterRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    phone: str = Field(min_length=5, max_length=20)
+    password: str = Field(min_length=8, max_length=128)
+
 def create_access_token(user_id: int) -> str:
     expires_at = datetime.now(timezone.utc) + timedelta(
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
@@ -35,8 +40,28 @@ def create_access_token(user_id: int) -> str:
 
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
+@router.post('/register',status_code=status.HTTP_201_CREATED)
+def register(user_data:RegisterRequest,db:Session = Depends(get_db)):
+    existing_user = db.query(User).filter(User.phone==user_data.phone).first()
 
-@router.post("/auth/login")
+    if existing_user: 
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User with this phone already exists",
+        )
+
+    user = User(name=user_data.name,phone=user_data.phone, password_hash=password_hash.hash(user_data.password))
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "id": user.id,
+        "name": user.name,
+        "phone": user.phone,
+    }
+
+@router.post("/login")
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
