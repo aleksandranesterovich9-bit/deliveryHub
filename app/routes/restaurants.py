@@ -45,7 +45,7 @@ def get_restaurants(
     "/restaurants/{restaurant_id}",
     response_model=RestaurantResponse
 )
-async def get_restaurant(
+def get_restaurant(
     restaurant_id: int,
     db: Session = Depends(get_db)
 ):

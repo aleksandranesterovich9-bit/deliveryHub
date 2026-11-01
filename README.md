@@ -34,7 +34,8 @@
 - Uvicorn
 - Pytest *(planned)*
 - Alembic *(planned)*
-- Docker *(planned)*
+- Docker
+- Redis(soon)
 
 ## 🎯 Project Goals
 
