@@ -1,0 +1,11 @@
+import logging
+
+
+def configure_logging(level: str = "INFO") -> None:
+    logging.basicConfig(
+        level=level.upper(),
+        format="%(asctime)s %(levelname)-7s [%(name)s] %(message)s",
+    )
+    # aio-pika / aiormq are very chatty on INFO.
+    logging.getLogger("aiormq").setLevel(logging.WARNING)
+    logging.getLogger("aio_pika").setLevel(logging.WARNING)

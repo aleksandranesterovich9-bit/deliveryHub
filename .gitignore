@@ -1,6 +1,17 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
+
+# Tools
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets
 .env
+
+# Editors
 .idea/
 .vscode/

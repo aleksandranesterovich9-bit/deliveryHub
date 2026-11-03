@@ -1,7 +1,12 @@
 .venv
 .git
+.github
 .env
 __pycache__
 *.pyc
+.pytest_cache
+.ruff_cache
 .vscode
-temp
+.idea
+tests
+docs
